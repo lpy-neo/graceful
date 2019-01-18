@@ -131,7 +131,7 @@ func (w *worker) waitSignal() {
 	case sig := <-ch:
 		log.Printf("worker got signal: %v\n", sig)
 	case <-w.stopCh:
-		log.Printf("stop worker")
+		log.Printf("stop worker\n")
 	}
 
 	w.stop()

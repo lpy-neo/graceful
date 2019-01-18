@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"sync"
 	"sync/atomic"
+	"syscall"
 )
 
 type master struct {
@@ -65,17 +66,11 @@ func (m *master) waitSignal() {
 		var sig os.Signal
 		select {
 		case err := <-m.workerExit:
-			if _, ok := err.(*exec.ExitError); ok {
-				log.Printf("worker exit with error: %+v, master is going to shutdown.", err)
-				m.stop()
-				return
-			}
 			atomic.AddInt32(&m.livingWorkerNum, -1)
-			if m.livingWorkerNum <= 0 {
-				log.Printf("all workers exit, master is going to shutdown.")
-				m.stop()
-				return
-			}
+			log.Printf("worker exit: %+v, and will be restarted...", err)
+			m.workerPid = 0
+			m.reload()
+
 			continue
 		case sig = <-ch:
 			log.Printf("master got signal: %v\n", sig)
@@ -111,7 +106,9 @@ func (m *master) reload() {
 }
 
 func (m *master) stop() {
-	// todo
+	if m.workerPid > 0 {
+		syscall.Kill(m.workerPid, workerStopSignal)
+	}
 }
 
 // initFDs clone from https://github.com/jpillora/overseer

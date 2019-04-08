@@ -27,6 +27,7 @@ type master struct {
 	// if livingWorkerNum down to 0, we kill master as well
 	livingWorkerNum int32
 	sync.Mutex
+	status int
 }
 
 func (m *master) run() error {
@@ -66,10 +67,14 @@ func (m *master) waitSignal() {
 		var sig os.Signal
 		select {
 		case err := <-m.workerExit:
-			atomic.AddInt32(&m.livingWorkerNum, -1)
-			log.Printf("worker exit: %+v, and will be restarted...", err)
-			m.workerPid = 0
-			m.reload()
+			if m.status == 0 {
+				atomic.AddInt32(&m.livingWorkerNum, -1)
+				log.Printf("worker exit: %+v, and will be restarted...", err)
+				m.workerPid = 0
+				m.reload()
+			} else {
+				m.status = 0
+			}
 
 			continue
 		case sig = <-ch:
@@ -78,12 +83,14 @@ func (m *master) waitSignal() {
 
 		for _, s := range m.opt.reloadSignals {
 			if s == sig {
+				m.status = 1
 				m.reload()
 				break
 			}
 		}
 		for _, s := range m.opt.stopSignals {
 			if s == sig {
+				m.status = -1
 				m.stop()
 				return
 			}

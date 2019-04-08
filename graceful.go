@@ -102,7 +102,7 @@ func (s *Server) Run() error {
 		worker := &worker{handlers: s.handlers, opt: s.opt, stopCh: make(chan struct{})}
 		return worker.run()
 	}
-	master := &master{addrs: s.addrs, opt: s.opt, workerExit: make(chan error)}
+	master := &master{addrs: s.addrs, opt: s.opt, workerExit: make(chan error), status: 0}
 	return master.run()
 }
 
